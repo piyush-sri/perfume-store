@@ -4,10 +4,10 @@ import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebas
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "PASTE_HERE",
-  authDomain: "PASTE_HERE",
-  projectId: "PASTE_HERE",
-  appId: "PASTE_HERE",
+  apiKey: "copy this from your screen",
+  authDomain: "perfume-store-aafbe.firebaseapp.com",
+  projectId: "perfume-store-aafbe",
+  appId: "1:781198623883:web:03e9ded3d57bbeaa59808e",
 };
 
 const app = initializeApp(firebaseConfig);
