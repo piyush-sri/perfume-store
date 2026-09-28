@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Admin | Perfume Store</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Manrope:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <span class="logo">Perfume Store admin</span>
+  <nav><a href="index.html">View website</a><a href="#" id="logout" hidden>Log out</a></nav>
+</div></header>
+
+<main class="wrap">
+  <!-- Login -->
+  <section id="loginBox">
+    <h2>Log in</h2>
+    <form class="crud" id="loginForm" style="max-width:360px">
+      <div><label for="em">Email</label><input id="em" type="email" required autocomplete="username"></div>
+      <div><label for="pw">Password</label><input id="pw" type="password" required autocomplete="current-password"></div>
+      <button class="btn" type="submit">Log in</button>
+      <div class="msg" id="loginMsg"></div>
+    </form>
+  </section>
+
+  <!-- Dashboard -->
+  <section id="dash" hidden>
+    <div class="tabs" id="tabs"></div>
+    <h2 id="title"></h2>
+    <form class="crud" id="form"></form>
+    <div class="msg" id="msg"></div>
+    <div class="scroll"><table><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
+  </section>
+</main>
+
+<script type="module">
+import { db, auth } from "./firebase-config.js";
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, orderBy, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// Each entry = one collection. [key, label, input type]
+const CFG = {
+  brands:  { label: "Companies", fields: [["name","Company name","text"],["logo","Logo image link (optional)","url"],["description","Short description","textarea"]] },
+  offers:  { label: "Offers",    fields: [["title","Offer title","text"],["description","Offer details","textarea"],["validTill","Valid till (optional)","date"]] },
+  coupons: { label: "Coupons",   fields: [["code","Coupon code","text"],["discount","Discount, e.g. 10% off on orders above ₹5,000","text"],["validTill","Valid till (optional)","date"]] },
+};
+const $ = id => document.getElementById(id);
+let current = "brands", editId = null, rows = [];
+
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
+function say(t) { $("msg").textContent = t; }
+
+// ---- Auth ----
+$("loginForm").onsubmit = async e => {
+  e.preventDefault();
+  try { await signInWithEmailAndPassword(auth, $("em").value, $("pw").value); }
+  catch { $("loginMsg").textContent = "Wrong email or password."; }
+};
+$("logout").onclick = e => { e.preventDefault(); signOut(auth); };
+onAuthStateChanged(auth, user => {
+  $("loginBox").hidden = !!user; $("dash").hidden = !user; $("logout").hidden = !user;
+  if (user) show("brands");
+});
+
+// ---- Tabs ----
+function drawTabs() {
+  $("tabs").replaceChildren();
+  Object.entries(CFG).forEach(([k, c]) => {
+    const b = el("button", "btn" + (k === current ? "" : " alt"), c.label);
+    b.type = "button"; b.onclick = () => show(k);
+    if (k === current) b.classList.add("on");
+    $("tabs").append(b);
+  });
+}
+
+async function show(name) {
+  current = name; editId = null; say(""); drawTabs();
+  $("title").textContent = CFG[name].label;
+  drawForm(); await drawTable();
+}
+
+// ---- Create / Update form ----
+function drawForm(values = {}) {
+  const f = $("form"); f.replaceChildren();
+  CFG[current].fields.forEach(([key, label, type]) => {
+    const wrap = el("div"), l = el("label", "", label); l.htmlFor = "f_" + key;
+    const inp = type === "textarea" ? el("textarea") : el("input");
+    if (type !== "textarea") inp.type = type;
+    inp.id = "f_" + key; inp.value = values[key] || "";
+    if (["name", "title", "code"].includes(key)) inp.required = true;
+    wrap.append(l, inp); f.append(wrap);
+  });
+  const save = el("button", "btn", editId ? "Save changes" : "Add");
+  save.type = "submit"; f.append(save);
+  if (editId) {
+    const c = el("button", "btn alt", "Cancel"); c.type = "button";
+    c.onclick = () => { editId = null; drawForm(); say(""); }; f.append(c);
+  }
+}
+
+$("form").onsubmit = async e => {
+  e.preventDefault();
+  const data = {};
+  CFG[current].fields.forEach(([k]) => data[k] = $("f_" + k).value.trim());
+  try {
+    if (editId) { await updateDoc(doc(db, current, editId), data); say("Changes saved."); }
+    else { await addDoc(collection(db, current), { ...data, createdAt: serverTimestamp() }); say("Added."); }
+    editId = null; drawForm(); await drawTable();
+  } catch (err) { console.error(err); say("Could not save. Are you logged in?"); }
+};
+
+// ---- Read + Delete ----
+async function drawTable() {
+  const snap = await getDocs(query(collection(db, current), orderBy("createdAt", "desc")));
+  rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const fields = CFG[current].fields;
+  const hr = el("tr"); fields.forEach(([, l]) => hr.append(el("th", "", l))); hr.append(el("th", "", "Actions"));
+  $("thead").replaceChildren(hr);
+  const tb = $("tbody"); tb.replaceChildren();
+  if (!rows.length) { const r = el("tr"), c = el("td", "small", "Nothing here yet. Use the form above to add the first one."); c.colSpan = fields.length + 1; r.append(c); tb.append(r); return; }
+  const today = new Date().toISOString().slice(0, 10);
+  rows.forEach(r => {
+    const tr = el("tr");
+    fields.forEach(([k]) => tr.append(el("td", "", r[k] || "")));
+    const act = el("td");
+    const ed = el("button", "btn alt", "Edit"); ed.type = "button";
+    ed.onclick = () => { editId = r.id; drawForm(r); say("Editing. Change the fields above."); window.scrollTo(0, 0); };
+    const del = el("button", "btn del", "Delete"); del.type = "button"; del.style.marginLeft = "6px";
+    del.onclick = async () => {
+      if (!confirm("Delete this entry permanently?")) return;
+      await deleteDoc(doc(db, current, r.id)); say("Deleted."); drawTable();
+    };
+    act.append(ed, del);
+    if (r.validTill && r.validTill < today) act.append(el("div", "small", "Expired: hidden on website"));
+    tr.append(act); tb.append(tr);
+  });
+}
+</script>
+</body>
+</html>

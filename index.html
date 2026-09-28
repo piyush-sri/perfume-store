@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Perfume Store, Basti | Wholesale Cosmetics &amp; Fragrances</title>
+<meta name="description" content="Perfume Store in Basti, Uttar Pradesh: wholesale supplier of cosmetics, perfumes and beauty products from leading companies. See our brands, offers and coupons.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Manrope:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Store","name":"Perfume Store","description":"Wholesale cosmetics and fragrances","address":{"@type":"PostalAddress","addressLocality":"Basti","addressRegion":"Uttar Pradesh","addressCountry":"IN"}}
+</script>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <span class="logo" id="shopName">Perfume Store</span>
+  <nav><a href="#brands">Companies</a><a href="#offers">Offers</a><a href="#coupons">Coupons</a><a href="#contact">Contact</a></nav>
+</div></header>
+
+<main class="wrap">
+  <div class="hero">
+    <h1>Cosmetics and fragrances, wholesale, in Basti.</h1>
+    <p id="tagline">We supply shops and retailers with genuine products from trusted companies.</p>
+    <a class="btn" id="waBtn" href="#contact">Ask for wholesale rates</a>
+  </div>
+
+  <section id="brands"><h2>Companies we work with</h2>
+    <div class="grid" id="brandList"><p class="small">Loading…</p></div></section>
+
+  <section id="offers"><h2>Ongoing offers</h2>
+    <div class="grid" id="offerList"><p class="small">Loading…</p></div></section>
+
+  <section id="coupons"><h2>Coupons</h2>
+    <p class="small">Show the code at the shop or mention it on WhatsApp.</p>
+    <div class="grid" id="couponList"><p class="small">Loading…</p></div></section>
+</main>
+
+<footer id="contact"><div class="wrap">
+  <h3 id="fName"></h3>
+  <p id="fAddr"></p>
+  <p>Phone: <a id="fPhone"></a> · <a id="fWa" target="_blank" rel="noopener">WhatsApp us</a></p>
+</div></footer>
+
+<script type="module">
+import { db, SHOP } from "./firebase-config.js";
+import { collection, getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const $ = id => document.getElementById(id);
+const today = new Date().toISOString().slice(0, 10);
+
+// Shop details
+$("shopName").textContent = $("fName").textContent = SHOP.name;
+$("tagline").textContent = SHOP.tagline;
+$("fAddr").textContent = SHOP.address;
+$("fPhone").textContent = SHOP.phone;
+$("fPhone").href = "tel:" + SHOP.phone.replace(/\s/g, "");
+const wa = "https://wa.me/" + SHOP.whatsapp + "?text=" + encodeURIComponent("Hello, I want wholesale rates.");
+$("fWa").href = wa; $("waBtn").href = wa;
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text) e.textContent = text;   // textContent = safe from HTML injection
+  return e;
+}
+
+async function load(name) {
+  const snap = await getDocs(query(collection(db, name), orderBy("createdAt", "desc")));
+  return snap.docs.map(d => d.data()).filter(x => !x.validTill || x.validTill >= today);
+}
+
+function fill(id, items, build, empty) {
+  const box = $(id); box.replaceChildren();
+  if (!items.length) { box.append(el("p", "small", empty)); return; }
+  items.forEach(i => box.append(build(i)));
+}
+
+try {
+  const [brands, offers, coupons] = await Promise.all([load("brands"), load("offers"), load("coupons")]);
+
+  fill("brandList", brands, b => {
+    const c = el("div", "card");
+    if (b.logo) { const im = el("img"); im.src = b.logo; im.alt = b.name + " logo"; im.loading = "lazy"; c.append(im); }
+    c.append(el("h3", "", b.name), el("p", "small", b.description || ""));
+    return c;
+  }, "Company list coming soon.");
+
+  fill("offerList", offers, o => {
+    const c = el("div", "card");
+    c.append(el("h3", "", o.title), el("p", "", o.description || ""));
+    if (o.validTill) c.append(el("p", "small", "Valid till " + o.validTill));
+    return c;
+  }, "No offers right now. Check back soon.");
+
+  fill("couponList", coupons, k => {
+    const c = el("div", "card coupon");
+    c.append(el("div", "code", k.code), el("p", "", k.discount || ""));
+    if (k.validTill) c.append(el("p", "small", "Valid till " + k.validTill));
+    return c;
+  }, "No active coupons right now.");
+} catch (e) {
+  console.error(e);
+  ["brandList", "offerList", "couponList"].forEach(id => $(id).textContent = "Could not load. Please refresh.");
+}
+</script>
+</body>
+</html>
