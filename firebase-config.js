@@ -4,7 +4,7 @@ import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebas
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "copy this from your screen",
+  apiKey: "AIzaSyDofJjAKzR_srK0kcCBQ1VuDZDFf-koh6U",
   authDomain: "perfume-store-aafbe.firebaseapp.com",
   projectId: "perfume-store-aafbe",
   appId: "1:781198623883:web:03e9ded3d57bbeaa59808e",
