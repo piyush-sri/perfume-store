@@ -43,7 +43,7 @@ import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, orderBy, query,
 
 // Each entry = one collection. [key, label, input type]
 const CFG = {
-  brands:  { label: "Companies", fields: [["name","Company name","text"],["logo","Logo image link (optional)","url"],["description","Short description","textarea"]] },
+  brands:  { label: "Companies", fields: [["name","Company name","text"],["logo","Logo image link (optional)","text"],["description","Short description","textarea"]] },
   offers:  { label: "Offers",    fields: [["title","Offer title","text"],["description","Offer details","textarea"],["validTill","Valid till (optional)","date"]] },
   coupons: { label: "Coupons",   fields: [["code","Coupon code","text"],["discount","Discount, e.g. 10% off on orders above ₹5,000","text"],["validTill","Valid till (optional)","date"]] },
 };
